@@ -9,6 +9,21 @@ import { getNextDueDate } from '@/utils/formatters';
 import { useRouter } from 'expo-router';
 import { ChevronDown, Calendar } from 'lucide-react-native';
 
+// Category color mapping
+const getCategoryColor = (category: SubscriptionCategory): string => {
+  const colors: Record<SubscriptionCategory, string> = {
+    Entertainment: '#8B5CF6',
+    Utilities: '#10B981',
+    Rent: '#F59E0B',
+    Education: '#3B82F6',
+    Health: '#EF4444',
+    Transport: '#6366F1',
+    Food: '#F97316',
+    Other: '#6B7280',
+  };
+  return colors[category];
+};
+
 const categories: SubscriptionCategory[] = [
   'Entertainment', 'Utilities', 'Rent', 'Education', 'Health', 'Transport', 'Food', 'Other'
 ];
@@ -55,8 +70,10 @@ export default function AddSubscriptionScreen() {
         category: formData.category,
         recurrence: formData.recurrence,
         nextDueDate,
+        startDate,
         isPaid: false,
         description: formData.description.trim(),
+        color: getCategoryColor(formData.category),
       });
 
       Alert.alert(

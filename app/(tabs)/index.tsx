@@ -17,6 +17,8 @@ export default function HomeScreen() {
     setUser, 
     getUpcomingBills, 
     getTotalMonthlyAmount,
+    getBudgetInsights,
+    getSavingsOpportunities,
     addSubscription 
   } = useSubscriptionStore();
 
@@ -28,6 +30,14 @@ export default function HomeScreen() {
         name: 'Alex Johnson',
         email: 'alex@example.com',
         monthlyBudget: 500,
+        notificationPreferences: {
+          reminderDays: [1, 3, 7],
+          priceIncreaseAlerts: true,
+          trialEndAlerts: true,
+          overdueAlerts: true,
+        },
+        currency: 'USD',
+        timezone: 'America/New_York',
       });
     }
 
@@ -40,7 +50,9 @@ export default function HomeScreen() {
           category: 'Entertainment' as const,
           recurrence: 'Monthly' as const,
           nextDueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           isPaid: false,
+          color: '#8B5CF6',
         },
         {
           name: 'Spotify',
@@ -48,7 +60,9 @@ export default function HomeScreen() {
           category: 'Entertainment' as const,
           recurrence: 'Monthly' as const,
           nextDueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
+          startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
           isPaid: true,
+          color: '#8B5CF6',
         },
         {
           name: 'Electric Bill',
@@ -56,7 +70,9 @@ export default function HomeScreen() {
           category: 'Utilities' as const,
           recurrence: 'Monthly' as const,
           nextDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
           isPaid: false,
+          color: '#10B981',
         },
         {
           name: 'Adobe Creative Cloud',
@@ -64,7 +80,9 @@ export default function HomeScreen() {
           category: 'Education' as const,
           recurrence: 'Yearly' as const,
           nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+          startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
           isPaid: false,
+          color: '#3B82F6',
         },
       ];
 
@@ -74,8 +92,8 @@ export default function HomeScreen() {
 
   const totalMonthly = getTotalMonthlyAmount();
   const upcomingBills = getUpcomingBills();
-  const budgetUsed = user ? (totalMonthly / user.monthlyBudget) * 100 : 0;
-  const remainingBudget = user ? user.monthlyBudget - totalMonthly : 0;
+  const budgetInsights = getBudgetInsights();
+  const savingsOpportunities = getSavingsOpportunities();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -101,17 +119,17 @@ export default function HomeScreen() {
           </View>
           
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${Math.min(budgetUsed, 100)}%` }]} />
+            <View style={[styles.progressFill, { width: `${Math.min(budgetInsights.percentageUsed, 100)}%` }]} />
           </View>
           
           <View style={styles.budgetFooter}>
-            <Text style={[styles.remainingText, remainingBudget < 0 && styles.overBudget]}>
-              {remainingBudget >= 0 
-                ? `${formatCurrency(remainingBudget)} remaining`
-                : `${formatCurrency(Math.abs(remainingBudget))} over budget`
+            <Text style={[styles.remainingText, budgetInsights.remainingBudget < 0 && styles.overBudget]}>
+              {budgetInsights.remainingBudget >= 0 
+                ? `${formatCurrency(budgetInsights.remainingBudget)} remaining`
+                : `${formatCurrency(Math.abs(budgetInsights.remainingBudget))} over budget`
               }
             </Text>
-            <Text style={styles.percentageText}>{budgetUsed.toFixed(1)}%</Text>
+            <Text style={styles.percentageText}>{budgetInsights.percentageUsed.toFixed(1)}%</Text>
           </View>
         </View>
 

@@ -136,7 +136,7 @@ export default function NotificationsScreen() {
                 <View style={styles.settingControl}>
                   {item.type === 'switch' ? (
                     <Switch
-                      value={item.value}
+                      value={Boolean(item.value)}
                       onValueChange={(value) => updateNotification(item.key, value)}
                       trackColor={{ false: '#F3F4F6', true: '#3B82F6' }}
                       thumbColor="#FFFFFF"

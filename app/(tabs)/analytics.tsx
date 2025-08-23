@@ -3,7 +3,41 @@ import { View, Text, StyleSheet, ScrollView, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { formatCurrency } from '@/utils/formatters';
-import { PieChart, BarChart } from 'react-native-chart-kit';
+// Simple chart components (replacing react-native-chart-kit)
+const SimplePieChart = ({ data }: { data: any[] }) => (
+  <View style={{ alignItems: 'center', marginVertical: 20 }}>
+    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 16 }}>Spending by Category</Text>
+    {data.map((item, index) => (
+      <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 4 }}>
+        <View style={{ width: 16, height: 16, backgroundColor: item.color, borderRadius: 8, marginRight: 8 }} />
+        <Text style={{ flex: 1 }}>{item.name}</Text>
+        <Text style={{ fontWeight: '600' }}>{formatCurrency(item.population)}</Text>
+      </View>
+    ))}
+  </View>
+);
+
+const SimpleBarChart = ({ data }: { data: any }) => (
+  <View style={{ alignItems: 'center', marginVertical: 20 }}>
+    <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 16 }}>Monthly Trend</Text>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: 100, marginBottom: 16 }}>
+      {data.datasets[0].data.map((value: number, index: number) => (
+        <View key={index} style={{ 
+          width: 30, 
+          backgroundColor: '#3B82F6', 
+          marginHorizontal: 4,
+          height: Math.max(20, (value / Math.max(...data.datasets[0].data)) * 80),
+          borderRadius: 4
+        }} />
+      ))}
+    </View>
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+      {data.labels.map((label: string, index: number) => (
+        <Text key={index} style={{ fontSize: 12, color: '#6B7280' }}>{label}</Text>
+      ))}
+    </View>
+  </View>
+);
 import { TrendingUp, DollarSign, Calendar, Target } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -118,16 +152,7 @@ export default function AnalyticsScreen() {
           <View style={styles.chartSection}>
             <Text style={styles.chartTitle}>Spending by Category</Text>
             <View style={styles.chartContainer}>
-              <PieChart
-                data={categoryData}
-                width={width - 40}
-                height={200}
-                chartConfig={chartConfig}
-                accessor="population"
-                backgroundColor="transparent"
-                paddingLeft="15"
-                absolute
-              />
+              <SimplePieChart data={categoryData} />
             </View>
           </View>
         )}
@@ -136,14 +161,7 @@ export default function AnalyticsScreen() {
         <View style={styles.chartSection}>
           <Text style={styles.chartTitle}>Monthly Spending Trend</Text>
           <View style={styles.chartContainer}>
-            <BarChart
-              data={monthlyTrendData}
-              width={width - 40}
-              height={200}
-              chartConfig={chartConfig}
-              style={styles.chart}
-              showValuesOnTopOfBars
-            />
+            <SimpleBarChart data={monthlyTrendData} />
           </View>
         </View>
 
