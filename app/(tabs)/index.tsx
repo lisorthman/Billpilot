@@ -1,109 +1,111 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAuthStore } from '@/store/authStore';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { formatCurrency } from '@/utils/formatters';
-import { Plus, TrendingUp, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Plus, TrendingUp, CircleAlert as AlertCircle, LogOut, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import AuthModal from '@/components/AuthModal';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  
   const { 
     subscriptions, 
     user, 
-    setUser, 
     getUpcomingBills, 
     getTotalMonthlyAmount,
     getBudgetInsights,
     getSavingsOpportunities,
-    addSubscription 
+    fetchSubscriptions,
+    isLoading,
+    error
   } = useSubscriptionStore();
+  
+  const { user: authUser, logout } = useAuthStore();
 
   useEffect(() => {
-    // Initialize demo user and data
-    if (!user) {
-      setUser({
-        id: '1',
-        name: 'Alex Johnson',
-        email: 'alex@example.com',
-        monthlyBudget: 500,
-        notificationPreferences: {
-          reminderDays: [1, 3, 7],
-          priceIncreaseAlerts: true,
-          trialEndAlerts: true,
-          overdueAlerts: true,
-        },
-        currency: 'USD',
-        timezone: 'America/New_York',
-      });
+    // If user is authenticated, fetch subscriptions from API
+    if (authUser) {
+      fetchSubscriptions();
     }
-
-    // Add demo subscriptions if empty
-    if (subscriptions.length === 0) {
-      const demoSubscriptions = [
-        {
-          name: 'Netflix',
-          amount: 15.99,
-          category: 'Entertainment' as const,
-          recurrence: 'Monthly' as const,
-          nextDueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-          startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-          isPaid: false,
-          color: '#8B5CF6',
-        },
-        {
-          name: 'Spotify',
-          amount: 9.99,
-          category: 'Entertainment' as const,
-          recurrence: 'Monthly' as const,
-          nextDueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-          startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-          isPaid: true,
-          color: '#8B5CF6',
-        },
-        {
-          name: 'Electric Bill',
-          amount: 85.50,
-          category: 'Utilities' as const,
-          recurrence: 'Monthly' as const,
-          nextDueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          startDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-          isPaid: false,
-          color: '#10B981',
-        },
-        {
-          name: 'Adobe Creative Cloud',
-          amount: 239.88,
-          category: 'Education' as const,
-          recurrence: 'Yearly' as const,
-          nextDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-          startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-          isPaid: false,
-          color: '#3B82F6',
-        },
-      ];
-
-      demoSubscriptions.forEach(sub => addSubscription(sub));
-    }
-  }, [user, subscriptions.length]);
+  }, [authUser]);
 
   const totalMonthly = getTotalMonthlyAmount();
   const upcomingBills = getUpcomingBills();
   const budgetInsights = getBudgetInsights();
   const savingsOpportunities = getSavingsOpportunities();
 
+  const handleLogout = async () => {
+    await logout();
+    // Clear local subscription data
+    // You might want to add a clearSubscriptions method to your store
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // Fetch user profile and subscriptions
+    if (authUser) {
+      fetchSubscriptions();
+    }
+  };
+
+  // Show loading state while fetching data
+  if (isLoading && subscriptions.length === 0) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+          <Text style={styles.loadingText}>Loading your subscriptions...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show auth modal if no user is logged in
+  if (!authUser) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.authContainer}>
+          <View style={styles.authHeader}>
+            <Text style={styles.appTitle}>BillPilot</Text>
+            <Text style={styles.appSubtitle}>Manage your subscriptions smartly</Text>
+          </View>
+          
+          <TouchableOpacity 
+            style={styles.authButton}
+            onPress={() => setShowAuthModal(true)}
+          >
+            <User size={20} color="#FFFFFF" />
+            <Text style={styles.authButtonText}>Get Started</Text>
+          </TouchableOpacity>
+        </View>
+        
+        <AuthModal 
+          visible={showAuthModal} 
+          onClose={() => setShowAuthModal(false)}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+        {/* Header with Logout */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.greeting}>Hello, {user?.name || 'User'}</Text>
+            <Text style={styles.greeting}>Hello, {authUser.name}</Text>
             <Text style={styles.subtitle}>Manage your subscriptions</Text>
           </View>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <LogOut size={20} color="#6B7280" />
+          </TouchableOpacity>
         </View>
 
         {/* Budget Overview */}
@@ -115,7 +117,7 @@ export default function HomeScreen() {
           
           <View style={styles.budgetAmount}>
             <Text style={styles.totalAmount}>{formatCurrency(totalMonthly)}</Text>
-            <Text style={styles.budgetLimit}>of {formatCurrency(user?.monthlyBudget || 0)}</Text>
+            <Text style={styles.budgetLimit}>of {formatCurrency(authUser.monthlyBudget)}</Text>
           </View>
           
           <View style={styles.progressBar}>
@@ -202,6 +204,9 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: 28,
@@ -212,6 +217,57 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  logoutButton: {
+    padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+  },
+  loadingText: {
+    marginTop: 10,
+    color: '#6B7280',
+  },
+  authContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#F9FAFB',
+  },
+  authHeader: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  appTitle: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 8,
+  },
+  appSubtitle: {
+    fontSize: 18,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  authButton: {
+    backgroundColor: '#8B5CF6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    width: '100%',
+  },
+  authButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 10,
   },
   budgetCard: {
     backgroundColor: '#FFFFFF',
