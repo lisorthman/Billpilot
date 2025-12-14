@@ -22,7 +22,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [monthlyBudget, setMonthlyBudget] = useState('');
-  
+
   const { login, register, isLoading, error, clearError } = useAuthStore();
 
   const handleSubmit = async () => {
@@ -46,7 +46,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
         timezone: 'UTC',
       });
     }
-    
+
     if (!error) {
       onClose();
       clearForm();
@@ -78,7 +78,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
           <Text style={styles.title}>
             {isLogin ? 'Login' : 'Create Account'}
           </Text>
-          
+
           {!isLogin && (
             <TextInput
               style={styles.input}
@@ -88,7 +88,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
               autoCapitalize="words"
             />
           )}
-          
+
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -97,7 +97,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
             keyboardType="email-address"
             autoCapitalize="none"
           />
-          
+
           <TextInput
             style={styles.input}
             placeholder="Password"
@@ -105,7 +105,7 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
             onChangeText={setPassword}
             secureTextEntry
           />
-          
+
           {!isLogin && (
             <TextInput
               style={styles.input}
@@ -115,9 +115,9 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
               keyboardType="numeric"
             />
           )}
-          
+
           {error && <Text style={styles.errorText}>{error}</Text>}
-          
+
           <TouchableOpacity
             style={styles.button}
             onPress={handleSubmit}
@@ -131,13 +131,13 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
               </Text>
             )}
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.toggleButton} onPress={toggleMode}>
             <Text style={styles.toggleText}>
               {isLogin ? 'Need an account? Register' : 'Have an account? Login'}
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeText}>Close</Text>
           </TouchableOpacity>

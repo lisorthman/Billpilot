@@ -1,23 +1,28 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth, indexedDBLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// TODO: Replace the following with your app's Firebase project configuration
-// See: https://firebase.google.com/docs/web/setup#config-object
+// Firebase project configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDKpEpmJHNUdEERPaVypy7p1St4DgF2Q8Y",
+    authDomain: "billpilot-lisorthman.firebaseapp.com",
+    projectId: "billpilot-lisorthman",
+    storageBucket: "billpilot-lisorthman.firebasestorage.app",
+    messagingSenderId: "78541988864",
+    appId: "1:78541988864:web:429fb6d29b7e4c8f3da4e5",
+    measurementId: "G-RM6RS4KRZF"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Authentication and Firestore
-const auth = getAuth(app);
+// Initialize Authentication with local persistence
+// indexedDBLocalPersistence works in React Native/Expo environments
+const auth = initializeAuth(app, {
+    persistence: indexedDBLocalPersistence
+});
+
+// Initialize Firestore
 const db = getFirestore(app);
 
 export { auth, db };

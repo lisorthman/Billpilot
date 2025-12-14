@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../services/api';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updateProfile,
+  User as FirebaseUser
+} from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../services/firebaseConfig';
 
 interface User {
   id: string;
@@ -23,10 +31,10 @@ interface User {
 
 interface AuthStore {
   user: User | null;
-  token: string | null;
+  firebaseUser: FirebaseUser | null;
   isLoading: boolean;
   error: string | null;
-  
+
   login: (email: string, password: string) => Promise<void>;
   register: (userData: {
     name: string;
@@ -37,7 +45,7 @@ interface AuthStore {
     timezone?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
-  fetchProfile: () => Promise<void>;
+  fetchProfile: (uid: string) => Promise<void>;
   clearError: () => void;
 }
 
@@ -45,74 +53,129 @@ export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => ({
       user: null,
-      token: null,
+      firebaseUser: null,
       isLoading: false,
       error: null,
-      
+
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.post('/auth/login', { email, password });
-          const { user, token } = response.data.data;
-          
-          // Store token in AsyncStorage
-          await AsyncStorage.setItem('authToken', token);
-          
-          set({ user, token, isLoading: false });
+          // Sign in with Firebase Auth
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const firebaseUser = userCredential.user;
+
+          // Fetch user profile from Firestore
+          const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            set({
+              user: { ...userData, id: firebaseUser.uid },
+              firebaseUser,
+              isLoading: false
+            });
+          } else {
+            throw new Error('User profile not found');
+          }
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Login failed', 
-            isLoading: false 
+          set({
+            error: error.message || 'Login failed',
+            isLoading: false
           });
         }
       },
-      
+
       register: async (userData) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.post('/auth/register', userData);
-          const { user, token } = response.data.data;
-          
-          await AsyncStorage.setItem('authToken', token);
-          
-          set({ user, token, isLoading: false });
+          // Create user with Firebase Auth
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            userData.email,
+            userData.password
+          );
+          const firebaseUser = userCredential.user;
+
+          // Update Firebase Auth profile
+          await updateProfile(firebaseUser, {
+            displayName: userData.name,
+          });
+
+          // Create user profile in Firestore
+          const newUser: User = {
+            id: firebaseUser.uid,
+            name: userData.name,
+            email: userData.email,
+            monthlyBudget: userData.monthlyBudget,
+            notificationPreferences: {
+              reminderDays: [3, 1, 0],
+              priceIncreaseAlerts: true,
+              trialEndAlerts: true,
+              overdueAlerts: true,
+            },
+            currency: userData.currency || 'USD',
+            timezone: userData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          };
+
+          await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+
+          set({ user: newUser, firebaseUser, isLoading: false });
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Registration failed', 
-            isLoading: false 
+          set({
+            error: error.message || 'Registration failed',
+            isLoading: false
           });
         }
       },
-      
+
       logout: async () => {
         try {
+          await firebaseSignOut(auth);
           await AsyncStorage.removeItem('authToken');
         } catch (error) {
-          console.error('Error removing auth token:', error);
+          console.error('Error signing out:', error);
         }
-        set({ user: null, token: null });
+        set({ user: null, firebaseUser: null });
       },
-      
-      fetchProfile: async () => {
+
+      fetchProfile: async (uid: string) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.get('/auth/me');
-          set({ user: response.data.data, isLoading: false });
+          const userDoc = await getDoc(doc(db, 'users', uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            set({ user: { ...userData, id: uid }, isLoading: false });
+          } else {
+            throw new Error('User profile not found');
+          }
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to fetch profile', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to fetch profile',
+            isLoading: false
           });
         }
       },
-      
+
       clearError: () => {
         set({ error: null });
       },
     }),
     {
       name: 'billpilot-auth',
-      partialize: (state) => ({ user: state.user, token: state.token }),
+      storage: {
+        getItem: async (name) => {
+          const value = await AsyncStorage.getItem(name);
+          return value ? JSON.parse(value) : null;
+        },
+        setItem: async (name, value) => {
+          await AsyncStorage.setItem(name, JSON.stringify(value));
+        },
+        removeItem: async (name) => {
+          await AsyncStorage.removeItem(name);
+        },
+      },
     }
   )
 );

@@ -1,7 +1,9 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Subscription, SubscriptionCategory, RecurrenceType, User, SpendingAnalytics, Notification } from '@/types';
-import api from '../services/api';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../services/firebaseConfig';
 
 interface SubscriptionStore {
   subscriptions: Subscription[];
@@ -9,7 +11,7 @@ interface SubscriptionStore {
   notifications: Notification[];
   isLoading: boolean;
   error: string | null;
-  
+
   // Local methods (existing functionality)
   addSubscription: (subscription: Omit<Subscription, 'id' | 'createdAt'>) => void;
   updateSubscription: (id: string, updates: Partial<Subscription>) => void;
@@ -18,14 +20,14 @@ interface SubscriptionStore {
   setUser: (user: User) => void;
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void;
   markNotificationAsRead: (id: string) => void;
-  
-  // API methods (new functionality)
-  fetchSubscriptions: () => Promise<void>;
-  createSubscription: (subscription: Omit<Subscription, 'id' | 'createdAt'>) => Promise<void>;
+
+  // Firebase methods (new functionality)
+  fetchSubscriptions: (userId: string) => Promise<void>;
+  createSubscription: (userId: string, subscription: Omit<Subscription, 'id' | 'createdAt'>) => Promise<void>;
   updateSubscriptionAPI: (id: string, updates: Partial<Subscription>) => Promise<void>;
   deleteSubscriptionAPI: (id: string) => Promise<void>;
   markAsPaidAPI: (id: string) => Promise<void>;
-  
+
   // Utility methods
   getUpcomingBills: () => Subscription[];
   getTotalMonthlyAmount: () => number;
@@ -34,7 +36,7 @@ interface SubscriptionStore {
   getBudgetInsights: () => SpendingAnalytics['budgetInsights'];
   checkForPriceIncreases: () => void;
   checkForTrialEnding: () => void;
-  
+
   // Error handling
   clearError: () => void;
 }
@@ -58,77 +60,96 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       notifications: [],
       isLoading: false,
       error: null,
-      
-      // API Methods
-      fetchSubscriptions: async () => {
+
+      // Firebase Methods
+      fetchSubscriptions: async (userId: string) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.get('/subscriptions');
-          set({ subscriptions: response.data.data, isLoading: false });
+          const subscriptionsRef = collection(db, 'subscriptions');
+          const q = query(subscriptionsRef, where('userId', '==', userId));
+          const querySnapshot = await getDocs(q);
+
+          const subscriptions: Subscription[] = [];
+          querySnapshot.forEach((doc) => {
+            subscriptions.push({ id: doc.id, ...doc.data() } as Subscription);
+          });
+
+          set({ subscriptions, isLoading: false });
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to fetch subscriptions', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to fetch subscriptions',
+            isLoading: false
           });
         }
       },
-      
-      createSubscription: async (subscription) => {
+
+      createSubscription: async (userId: string, subscription) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.post('/subscriptions', subscription);
-          const newSubscription = response.data.data;
+          const newSubscription = {
+            ...subscription,
+            userId,
+            createdAt: new Date(),
+            color: categoryColors[subscription.category],
+          };
+
+          const docRef = await addDoc(collection(db, 'subscriptions'), newSubscription);
+
           set((state) => ({
-            subscriptions: [...state.subscriptions, newSubscription],
+            subscriptions: [...state.subscriptions, { id: docRef.id, ...newSubscription } as Subscription],
             isLoading: false,
           }));
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to create subscription', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to create subscription',
+            isLoading: false
           });
         }
       },
-      
+
       updateSubscriptionAPI: async (id, updates) => {
         set({ isLoading: true, error: null });
         try {
-          const response = await api.put(`/subscriptions/${id}`, updates);
-          const updatedSubscription = response.data.data;
+          const subscriptionRef = doc(db, 'subscriptions', id);
+          await updateDoc(subscriptionRef, updates);
+
           set((state) => ({
             subscriptions: state.subscriptions.map((sub) =>
-              sub.id === id ? updatedSubscription : sub
+              sub.id === id ? { ...sub, ...updates } : sub
             ),
             isLoading: false,
           }));
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to update subscription', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to update subscription',
+            isLoading: false
           });
         }
       },
-      
+
       deleteSubscriptionAPI: async (id) => {
         set({ isLoading: true, error: null });
         try {
-          await api.delete(`/subscriptions/${id}`);
+          await deleteDoc(doc(db, 'subscriptions', id));
+
           set((state) => ({
             subscriptions: state.subscriptions.filter((sub) => sub.id !== id),
             isLoading: false,
           }));
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to delete subscription', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to delete subscription',
+            isLoading: false
           });
         }
       },
-      
+
       markAsPaidAPI: async (id) => {
         set({ isLoading: true, error: null });
         try {
-          await api.patch(`/subscriptions/${id}/mark-paid`);
+          const subscriptionRef = doc(db, 'subscriptions', id);
+          await updateDoc(subscriptionRef, { isPaid: true });
+
           set((state) => ({
             subscriptions: state.subscriptions.map((sub) =>
               sub.id === id ? { ...sub, isPaid: true } : sub
@@ -136,13 +157,13 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             isLoading: false,
           }));
         } catch (error: any) {
-          set({ 
-            error: error.response?.data?.error || error.message || 'Failed to mark as paid', 
-            isLoading: false 
+          set({
+            error: error.message || 'Failed to mark as paid',
+            isLoading: false
           });
         }
       },
-      
+
       // Local Methods (existing functionality - kept as fallback)
       addSubscription: (subscription) => {
         const newSubscription: Subscription = {
@@ -155,7 +176,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           subscriptions: [...state.subscriptions, newSubscription],
         }));
       },
-      
+
       updateSubscription: (id, updates) => {
         set((state) => ({
           subscriptions: state.subscriptions.map((sub) =>
@@ -163,13 +184,13 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           ),
         }));
       },
-      
+
       deleteSubscription: (id) => {
         set((state) => ({
           subscriptions: state.subscriptions.filter((sub) => sub.id !== id),
         }));
       },
-      
+
       markAsPaid: (id) => {
         set((state) => ({
           subscriptions: state.subscriptions.map((sub) =>
@@ -177,11 +198,11 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           ),
         }));
       },
-      
+
       setUser: (user) => {
         set({ user });
       },
-      
+
       addNotification: (notification) => {
         const newNotification: Notification = {
           ...notification,
@@ -200,22 +221,22 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           ),
         }));
       },
-      
+
       clearError: () => {
         set({ error: null });
       },
-      
+
       // Utility methods (existing functionality)
       getUpcomingBills: () => {
         const subscriptions = get().subscriptions;
         const now = new Date();
         const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-        
+
         return subscriptions
           .filter((sub) => new Date(sub.nextDueDate) <= sevenDaysFromNow)
           .sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
       },
-      
+
       getTotalMonthlyAmount: () => {
         return get().subscriptions.reduce((total, sub) => {
           switch (sub.recurrence) {
@@ -230,7 +251,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           }
         }, 0);
       },
-      
+
       getSpendingByCategory: () => {
         const subscriptions = get().subscriptions;
         const spending: Record<SubscriptionCategory, number> = {
@@ -243,32 +264,32 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           Food: 0,
           Other: 0,
         };
-        
+
         subscriptions.forEach((sub) => {
           let monthlyAmount = sub.amount;
           if (sub.recurrence === 'Yearly') monthlyAmount = sub.amount / 12;
           if (sub.recurrence === 'Weekly') monthlyAmount = (sub.amount * 52) / 12;
-          
+
           spending[sub.category] += monthlyAmount;
         });
-        
+
         return spending;
       },
 
       getSavingsOpportunities: () => {
         const subscriptions = get().subscriptions;
         const now = new Date();
-        
+
         return {
-          unusedSubscriptions: subscriptions.filter(sub => 
-            sub.createdAt < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) && 
+          unusedSubscriptions: subscriptions.filter(sub =>
+            sub.createdAt < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) &&
             sub.amount > 0
           ),
-          priceIncreases: subscriptions.filter(sub => 
+          priceIncreases: subscriptions.filter(sub =>
             sub.previousAmount && sub.amount > sub.previousAmount
           ),
-          trialEnding: subscriptions.filter(sub => 
-            sub.isFreeTrial && sub.trialEndDate && 
+          trialEnding: subscriptions.filter(sub =>
+            sub.isFreeTrial && sub.trialEndDate &&
             sub.trialEndDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000
           ),
         };
@@ -277,7 +298,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       getBudgetInsights: () => {
         const user = get().user;
         const totalMonthly = get().getTotalMonthlyAmount();
-        
+
         if (!user) {
           return {
             percentageUsed: 0,
@@ -347,6 +368,18 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
     }),
     {
       name: 'billpilot-storage',
+      storage: {
+        getItem: async (name) => {
+          const value = await AsyncStorage.getItem(name);
+          return value ? JSON.parse(value) : null;
+        },
+        setItem: async (name, value) => {
+          await AsyncStorage.setItem(name, JSON.stringify(value));
+        },
+        removeItem: async (name) => {
+          await AsyncStorage.removeItem(name);
+        },
+      },
     }
   )
 );
