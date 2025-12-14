@@ -55,9 +55,9 @@ BillPilot is a personal finance mobile app designed to help users track, manage,
 - **Zustand** - State management
 - **React Native Paper** - UI components
 
-### Backend (Planned)
-- **Node.js + Express** or **Firebase** - Backend services
-- **MongoDB/Firestore** - Database
+### Backend
+- **Firebase** - Backend-as-a-Service (BaaS)
+- **Firestore** - NoSQL Database
 - **Firebase Auth** - Authentication
 - **Firebase Cloud Messaging** - Push notifications
 
@@ -96,7 +96,12 @@ BillPilot is a personal finance mobile app designed to help users track, manage,
    npm run dev
    ```
 
-4. **Run on device/simulator**
+4. **Configure Firebase**
+   - Create a project in [Firebase Console](https://console.firebase.google.com/)
+   - Copy your web app configuration
+   - Update `services/firebaseConfig.ts` with your keys
+
+5. **Run on device/simulator**
    - Press `i` for iOS Simulator
    - Press `a` for Android Emulator
    - Scan QR code with Expo Go app on physical device
