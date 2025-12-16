@@ -14,11 +14,11 @@ const { width } = Dimensions.get('window');
 export default function HomeScreen() {
   const router = useRouter();
   const [showAuthModal, setShowAuthModal] = useState(false);
-  
-  const { 
-    subscriptions, 
-    user, 
-    getUpcomingBills, 
+
+  const {
+    subscriptions,
+    user,
+    getUpcomingBills,
     getTotalMonthlyAmount,
     getBudgetInsights,
     getSavingsOpportunities,
@@ -26,13 +26,13 @@ export default function HomeScreen() {
     isLoading,
     error
   } = useSubscriptionStore();
-  
+
   const { user: authUser, logout } = useAuthStore();
 
   useEffect(() => {
     // If user is authenticated, fetch subscriptions from API
     if (authUser) {
-      fetchSubscriptions();
+      fetchSubscriptions(authUser.id);
     }
   }, [authUser]);
 
@@ -51,7 +51,7 @@ export default function HomeScreen() {
     setShowAuthModal(false);
     // Fetch user profile and subscriptions
     if (authUser) {
-      fetchSubscriptions();
+      fetchSubscriptions(authUser.id);
     }
   };
 
@@ -76,8 +76,8 @@ export default function HomeScreen() {
             <Text style={styles.appTitle}>BillPilot</Text>
             <Text style={styles.appSubtitle}>Manage your subscriptions smartly</Text>
           </View>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.authButton}
             onPress={() => setShowAuthModal(true)}
           >
@@ -85,9 +85,9 @@ export default function HomeScreen() {
             <Text style={styles.authButtonText}>Get Started</Text>
           </TouchableOpacity>
         </View>
-        
-        <AuthModal 
-          visible={showAuthModal} 
+
+        <AuthModal
+          visible={showAuthModal}
           onClose={() => setShowAuthModal(false)}
         />
       </SafeAreaView>
@@ -114,19 +114,19 @@ export default function HomeScreen() {
             <Text style={styles.budgetTitle}>Monthly Budget</Text>
             <TrendingUp size={20} color="#10B981" />
           </View>
-          
+
           <View style={styles.budgetAmount}>
             <Text style={styles.totalAmount}>{formatCurrency(totalMonthly)}</Text>
             <Text style={styles.budgetLimit}>of {formatCurrency(authUser.monthlyBudget)}</Text>
           </View>
-          
+
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${Math.min(budgetInsights.percentageUsed, 100)}%` }]} />
           </View>
-          
+
           <View style={styles.budgetFooter}>
             <Text style={[styles.remainingText, budgetInsights.remainingBudget < 0 && styles.overBudget]}>
-              {budgetInsights.remainingBudget >= 0 
+              {budgetInsights.remainingBudget >= 0
                 ? `${formatCurrency(budgetInsights.remainingBudget)} remaining`
                 : `${formatCurrency(Math.abs(budgetInsights.remainingBudget))} over budget`
               }
@@ -161,13 +161,13 @@ export default function HomeScreen() {
               </TouchableOpacity>
             )}
           </View>
-          
+
           {upcomingBills.length > 0 ? (
             upcomingBills.slice(0, 3).map((subscription) => (
               <SubscriptionCard
                 key={subscription.id}
                 subscription={subscription}
-                onPress={() => {/* Navigate to subscription details */}}
+                onPress={() => {/* Navigate to subscription details */ }}
               />
             ))
           ) : (
@@ -180,7 +180,7 @@ export default function HomeScreen() {
         </View>
 
         {/* Quick Add Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.quickAddButton}
           onPress={() => router.push('/(tabs)/add')}
           activeOpacity={0.8}

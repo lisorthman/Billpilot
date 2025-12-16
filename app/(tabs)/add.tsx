@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { SubscriptionCategory, RecurrenceType } from '@/types';
@@ -32,8 +33,9 @@ const recurrenceOptions: RecurrenceType[] = ['Weekly', 'Monthly', 'Yearly'];
 
 export default function AddSubscriptionScreen() {
   const router = useRouter();
-  const { addSubscription } = useSubscriptionStore();
-  
+  const { createSubscription } = useSubscriptionStore();
+  const { user } = useAuthStore();
+
   const [formData, setFormData] = useState({
     name: '',
     amount: '',
@@ -41,7 +43,7 @@ export default function AddSubscriptionScreen() {
     recurrence: 'Monthly' as RecurrenceType,
     description: '',
   });
-  
+
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -61,10 +63,16 @@ export default function AddSubscriptionScreen() {
     setIsLoading(true);
 
     try {
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to add a subscription');
+        setIsLoading(false);
+        return;
+      }
+
       const startDate = new Date();
       const nextDueDate = getNextDueDate(startDate, formData.recurrence);
 
-      addSubscription({
+      await createSubscription(user.id, {
         name: formData.name.trim(),
         amount,
         category: formData.category,
