@@ -87,7 +87,19 @@ export default function AddSubscriptionScreen() {
       Alert.alert(
         'Success',
         'Subscription added successfully!',
-        [{ text: 'OK', onPress: () => router.back() }]
+        [{
+          text: 'OK',
+          onPress: () => {
+            setFormData({
+              name: '',
+              amount: '',
+              category: 'Entertainment',
+              recurrence: 'Monthly',
+              description: '',
+            });
+            router.back();
+          }
+        }]
       );
     } catch (error) {
       Alert.alert('Error', 'Failed to add subscription. Please try again.');

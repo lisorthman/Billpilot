@@ -167,7 +167,7 @@ export default function HomeScreen() {
               <SubscriptionCard
                 key={subscription.id}
                 subscription={subscription}
-                onPress={() => {/* Navigate to subscription details */ }}
+                onPress={() => router.push(`/subscription/${subscription.id}`)}
               />
             ))
           ) : (

@@ -71,7 +71,16 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
 
           const subscriptions: Subscription[] = [];
           querySnapshot.forEach((doc) => {
-            subscriptions.push({ id: doc.id, ...doc.data() } as Subscription);
+            const data = doc.data();
+            subscriptions.push({
+              id: doc.id,
+              ...data,
+              // Convert Firestore Timestamps to JS Dates
+              nextDueDate: data.nextDueDate?.toDate?.() || new Date(data.nextDueDate),
+              startDate: data.startDate?.toDate?.() || new Date(data.startDate),
+              createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt),
+              trialEndDate: data.trialEndDate?.toDate?.() || (data.trialEndDate ? new Date(data.trialEndDate) : undefined),
+            } as Subscription);
           });
 
           set({ subscriptions, isLoading: false });
@@ -229,11 +238,8 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       // Utility methods (existing functionality)
       getUpcomingBills: () => {
         const subscriptions = get().subscriptions;
-        const now = new Date();
-        const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
         return subscriptions
-          .filter((sub) => new Date(sub.nextDueDate) <= sevenDaysFromNow)
           .sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
       },
 
