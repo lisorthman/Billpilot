@@ -16,15 +16,8 @@ export default function HomeScreen() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const {
-    subscriptions,
-    user,
-    getUpcomingBills,
-    getTotalMonthlyAmount,
-    getBudgetInsights,
-    getSavingsOpportunities,
-    fetchSubscriptions,
-    isLoading,
-    error
+    subscriptions, user, getUpcomingBills, getTotalMonthlyAmount,
+    getBudgetInsights, getSavingsOpportunities, fetchSubscriptions, isLoading, error
   } = useSubscriptionStore();
 
   const { user: authUser, logout } = useAuthStore();
