@@ -156,12 +156,33 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       markAsPaidAPI: async (id) => {
         set({ isLoading: true, error: null });
         try {
+          const subscription = get().subscriptions.find(s => s.id === id);
+          if (!subscription) throw new Error('Subscription not found');
+
+          const currentDueDate = new Date(subscription.nextDueDate);
+          let newDueDate = new Date(currentDueDate);
+
+          switch (subscription.recurrence) {
+            case 'Monthly':
+              newDueDate.setMonth(newDueDate.getMonth() + 1);
+              break;
+            case 'Yearly':
+              newDueDate.setFullYear(newDueDate.getFullYear() + 1);
+              break;
+            case 'Weekly':
+              newDueDate.setDate(newDueDate.getDate() + 7);
+              break;
+          }
+
           const subscriptionRef = doc(db, 'subscriptions', id);
-          await updateDoc(subscriptionRef, { isPaid: true });
+          await updateDoc(subscriptionRef, {
+            nextDueDate: newDueDate,
+            isPaid: false // Ensure it's active for the next cycle
+          });
 
           set((state) => ({
             subscriptions: state.subscriptions.map((sub) =>
-              sub.id === id ? { ...sub, isPaid: true } : sub
+              sub.id === id ? { ...sub, nextDueDate: newDueDate, isPaid: false } : sub
             ),
             isLoading: false,
           }));
@@ -201,9 +222,27 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       },
 
       markAsPaid: (id) => {
+        const subscription = get().subscriptions.find(s => s.id === id);
+        if (!subscription) return;
+
+        const currentDueDate = new Date(subscription.nextDueDate);
+        let newDueDate = new Date(currentDueDate);
+
+        switch (subscription.recurrence) {
+          case 'Monthly':
+            newDueDate.setMonth(newDueDate.getMonth() + 1);
+            break;
+          case 'Yearly':
+            newDueDate.setFullYear(newDueDate.getFullYear() + 1);
+            break;
+          case 'Weekly':
+            newDueDate.setDate(newDueDate.getDate() + 7);
+            break;
+        }
+
         set((state) => ({
           subscriptions: state.subscriptions.map((sub) =>
-            sub.id === id ? { ...sub, isPaid: true } : sub
+            sub.id === id ? { ...sub, nextDueDate: newDueDate, isPaid: false } : sub
           ),
         }));
       },

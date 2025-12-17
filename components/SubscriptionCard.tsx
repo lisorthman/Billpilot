@@ -12,7 +12,7 @@ interface SubscriptionCardProps {
 export function SubscriptionCard({ subscription, onPress, showDueDate = true }: SubscriptionCardProps) {
   const daysUntilDue = getDaysUntilDue(subscription.nextDueDate);
   const isOverdue = daysUntilDue < 0;
-  const isDueSoon = daysUntilDue <= 3 && daysUntilDue >= 0;
+  const isDueSoon = daysUntilDue < 7 && daysUntilDue >= 0;
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
@@ -28,7 +28,7 @@ export function SubscriptionCard({ subscription, onPress, showDueDate = true }: 
             <Text style={styles.recurrence}>/{subscription.recurrence.toLowerCase()}</Text>
           </View>
         </View>
-        
+
         {showDueDate && (
           <View style={styles.footer}>
             <Text style={[
@@ -36,11 +36,11 @@ export function SubscriptionCard({ subscription, onPress, showDueDate = true }: 
               isOverdue && styles.overdue,
               isDueSoon && styles.dueSoon,
             ]}>
-              {isOverdue 
+              {isOverdue
                 ? `Overdue by ${Math.abs(daysUntilDue)} days`
-                : daysUntilDue === 0 
-                ? 'Due today'
-                : `Due ${formatDate(subscription.nextDueDate)}`
+                : daysUntilDue === 0
+                  ? 'Due today'
+                  : `Due ${formatDate(subscription.nextDueDate)}${isDueSoon ? ` (${daysUntilDue} days)` : ''}`
               }
             </Text>
             {subscription.isPaid && (
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   dueSoon: {
-    color: '#F59E0B',
+    color: '#EF4444',
     fontWeight: '600',
   },
   paidBadge: {
