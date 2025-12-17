@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { SubscriptionCategory, RecurrenceType } from '@/types';
-import { getNextDueDate } from '@/utils/formatters';
+import { getNextDueDate, formatDate } from '@/utils/formatters';
 import { useRouter } from 'expo-router';
 import { ChevronDown, Calendar } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Category color mapping
 const getCategoryColor = (category: SubscriptionCategory): string => {
@@ -42,11 +43,25 @@ export default function AddSubscriptionScreen() {
     category: 'Entertainment' as SubscriptionCategory,
     recurrence: 'Monthly' as RecurrenceType,
     description: '',
+    startDate: new Date(),
   });
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Helper to format date for display
+  const getFormattedDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setFormData({ ...formData, startDate: selectedDate });
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.name.trim() || !formData.amount.trim()) {
@@ -69,8 +84,9 @@ export default function AddSubscriptionScreen() {
         return;
       }
 
-      const startDate = new Date();
-      const nextDueDate = getNextDueDate(startDate, formData.recurrence);
+      // Use the selected startDate immediately as the next due date
+      const startDate = formData.startDate; // Keep as Date object
+      const nextDueDate = formData.startDate; // First bill is due on start date
 
       await createSubscription(user.id, {
         name: formData.name.trim(),
@@ -96,6 +112,7 @@ export default function AddSubscriptionScreen() {
               category: 'Entertainment',
               recurrence: 'Monthly',
               description: '',
+              startDate: new Date(),
             });
             router.back();
           }
@@ -183,6 +200,31 @@ export default function AddSubscriptionScreen() {
             onChangeText={(text) => setFormData({ ...formData, amount: text })}
             keyboardType="numeric"
           />
+
+          {/* Date Picker Section */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>First Bill Date *</Text>
+            <TouchableOpacity
+              style={styles.selector}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.selectorText}>
+                {getFormattedDate(formData.startDate)}
+              </Text>
+              <Calendar size={20} color="#6B7280" />
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={formData.startDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+              />
+            )}
+            <Text style={styles.helperText}>
+              Scheduled for {getFormattedDate(formData.startDate)}
+            </Text>
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Category *</Text>
@@ -284,6 +326,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginBottom: 6,
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    marginLeft: 4,
   },
   selector: {
     borderWidth: 1,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { Input } from '@/components/Input';
@@ -8,6 +8,7 @@ import { SubscriptionCategory, RecurrenceType } from '@/types';
 import { getNextDueDate } from '@/utils/formatters';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ChevronDown, Calendar, ArrowLeft } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Category color mapping (duplicated for now, could be shared utility)
 const getCategoryColor = (category: SubscriptionCategory): string => {
@@ -43,10 +44,12 @@ export default function EditSubscriptionScreen() {
         category: 'Entertainment' as SubscriptionCategory,
         recurrence: 'Monthly' as RecurrenceType,
         description: '',
+        nextDueDate: new Date(),
     });
 
     const [showCategoryPicker, setShowCategoryPicker] = useState(false);
     const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitializing, setIsInitializing] = useState(true);
 
@@ -58,6 +61,9 @@ export default function EditSubscriptionScreen() {
                 category: subscription.category,
                 recurrence: subscription.recurrence,
                 description: subscription.description || '',
+                nextDueDate: subscription.nextDueDate instanceof Date
+                    ? subscription.nextDueDate
+                    : new Date(subscription.nextDueDate),
             });
             setIsInitializing(false);
         } else if (!isInitializing) {
@@ -65,6 +71,18 @@ export default function EditSubscriptionScreen() {
             router.back();
         }
     }, [subscription]);
+
+    // Helper to format date for display
+    const getFormattedDate = (date: Date) => {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        setShowDatePicker(false);
+        if (selectedDate) {
+            setFormData({ ...formData, nextDueDate: selectedDate });
+        }
+    };
 
     if (isInitializing || !subscription) {
         return (
@@ -90,16 +108,17 @@ export default function EditSubscriptionScreen() {
 
         try {
             // Logic for next due date:
-            // If recurrence changes, we might want to recalculate nextDueDate based on TODAY or startDate?
-            // For simplicity, if recurrence changes, let's recalculate based on today. 
-            // If it stays same, keep original nextDueDate (unless user wants to change that too - currently form doesn't expose date picker).
-            // Let's keep it simple: Recalculate if recurrence changed, otherwise keep existing cycle logic.
-            // Actually, editing amount/name shouldn't change due date. Editing recurrence definitely should.
+            // Use the user-selected date (formData.nextDueDate).
+            // Only auto-recalculate if recurrence changes AND the user hasn't manually picked a new date?
+            // Actually, if the user explicitly picks a date, we should respect it.
+            // If they change recurrence, we *could* auto-update, but that might overwrite their manual pick.
+            // Let's trust the formData.nextDueDate as the source of truth,
+            // assuming the user updates it if they change recurrence, or we leave it to them.
+            // HOWEVER: If they change recurrence, the "next" date implies a new cycle.
+            // Let's stick to the Add Subscription logic: just take whatever is in formData.nextDueDate.
+            // If they change recurrence but not the date, the next bill is that date, and subsequence ones follow the new recurrence.
 
-            let nextDueDate = subscription.nextDueDate;
-            if (formData.recurrence !== subscription.recurrence) {
-                nextDueDate = getNextDueDate(new Date(), formData.recurrence);
-            }
+            const nextDueDate = formData.nextDueDate;
 
             await updateSubscriptionAPI(subscription.id, {
                 name: formData.name.trim(),
@@ -108,7 +127,7 @@ export default function EditSubscriptionScreen() {
                 recurrence: formData.recurrence,
                 description: formData.description.trim(),
                 color: getCategoryColor(formData.category),
-                nextDueDate: nextDueDate instanceof Date ? nextDueDate : new Date(nextDueDate), // Ensure Date object
+                nextDueDate: nextDueDate instanceof Date ? nextDueDate : new Date(nextDueDate),
             });
 
             Alert.alert(
@@ -201,6 +220,31 @@ export default function EditSubscriptionScreen() {
                         onChangeText={(text) => setFormData({ ...formData, amount: text })}
                         keyboardType="numeric"
                     />
+
+                    {/* Date Picker Section */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>Next Due Date *</Text>
+                        <TouchableOpacity
+                            style={styles.selector}
+                            onPress={() => setShowDatePicker(true)}
+                        >
+                            <Text style={styles.selectorText}>
+                                {getFormattedDate(formData.nextDueDate)}
+                            </Text>
+                            <Calendar size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={formData.nextDueDate}
+                                mode="date"
+                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                onChange={handleDateChange}
+                            />
+                        )}
+                        <Text style={styles.helperText}>
+                            Scheduled for {getFormattedDate(formData.nextDueDate)}
+                        </Text>
+                    </View>
 
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>Category *</Text>
@@ -304,6 +348,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#374151',
         marginBottom: 6,
+    },
+    helperText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        marginLeft: 4,
     },
     selector: {
         borderWidth: 1,
