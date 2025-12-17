@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/authStore';
@@ -44,6 +44,7 @@ export default function AddSubscriptionScreen() {
     recurrence: 'Monthly' as RecurrenceType,
     description: '',
     startDate: new Date(),
+    isFreeTrial: false,
   });
 
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -98,6 +99,8 @@ export default function AddSubscriptionScreen() {
         isPaid: false,
         description: formData.description.trim(),
         color: getCategoryColor(formData.category),
+        isFreeTrial: formData.isFreeTrial,
+        trialEndDate: formData.isFreeTrial ? startDate : undefined,
       });
 
       Alert.alert(
@@ -113,6 +116,7 @@ export default function AddSubscriptionScreen() {
               recurrence: 'Monthly',
               description: '',
               startDate: new Date(),
+              isFreeTrial: false,
             });
             router.back();
           }
@@ -201,9 +205,26 @@ export default function AddSubscriptionScreen() {
             keyboardType="numeric"
           />
 
+          {/* Free Trial Toggle */}
+          <View style={styles.switchContainer}>
+            <View>
+              <Text style={styles.switchLabel}>Free Trial?</Text>
+              <Text style={styles.switchSubLabel}>Enable if this is a trial period</Text>
+            </View>
+            <Switch
+              value={formData.isFreeTrial}
+              onValueChange={(value) => setFormData({ ...formData, isFreeTrial: value })}
+              trackColor={{ false: '#D1D5DB', true: '#8B5CF6' }}
+              thumbColor="#FFFFFF"
+              ios_backgroundColor="#D1D5DB"
+            />
+          </View>
+
           {/* Date Picker Section */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>First Bill Date *</Text>
+            <Text style={styles.label}>
+              {formData.isFreeTrial ? 'Trial Ends / First Bill *' : 'First Bill Date *'}
+            </Text>
             <TouchableOpacity
               style={styles.selector}
               onPress={() => setShowDatePicker(true)}
@@ -423,5 +444,26 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     flex: 1,
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  switchLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  switchSubLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
