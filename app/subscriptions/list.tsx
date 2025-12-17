@@ -12,10 +12,16 @@ export default function SubscriptionsListScreen() {
     const { subscriptions } = useSubscriptionStore();
     const [searchQuery, setSearchQuery] = useState('');
 
-    const filteredSubscriptions = subscriptions.filter(sub =>
-        sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        sub.category.toLowerCase().includes(searchQuery.toLowerCase())
-    ).sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
+    const filteredSubscriptions = subscriptions.filter(sub => {
+        const matchesSearch = sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            sub.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+        if (viewMode === 'trials') {
+            return matchesSearch && sub.isFreeTrial;
+        }
+
+        return matchesSearch;
+    }).sort((a, b) => new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime());
 
     return (
         <SafeAreaView style={styles.container}>
@@ -23,7 +29,9 @@ export default function SubscriptionsListScreen() {
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <ArrowLeft size={24} color="#1F2937" />
                 </TouchableOpacity>
-                <Text style={styles.title}>All Subscriptions</Text>
+                <Text style={styles.title}>
+                    {viewMode === 'trials' ? 'Free Trials' : 'All Subscriptions'}
+                </Text>
                 <View style={{ width: 40 }} />
             </View>
 
@@ -51,7 +59,9 @@ export default function SubscriptionsListScreen() {
 
                 {filteredSubscriptions.length === 0 && (
                     <View style={styles.emptyState}>
-                        <Text style={styles.emptyText}>No subscriptions found</Text>
+                        <Text style={styles.emptyText}>
+                            {viewMode === 'trials' ? 'No active free trials found' : 'No subscriptions found'}
+                        </Text>
                     </View>
                 )}
             </ScrollView>

@@ -16,7 +16,7 @@ export default function HomeScreen() {
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const {
-    subscriptions, user, getUpcomingBills, getTotalMonthlyAmount,
+    subscriptions, user, getUpcomingBills, getTotalMonthlyAmount, getActiveFreeTrials,
     getBudgetInsights, getSavingsOpportunities, fetchSubscriptions, isLoading, error
   } = useSubscriptionStore();
 
@@ -31,6 +31,7 @@ export default function HomeScreen() {
 
   const totalMonthly = getTotalMonthlyAmount();
   const upcomingBills = getUpcomingBills();
+  const activeTrials = getActiveFreeTrials();
   const budgetInsights = getBudgetInsights();
   const savingsOpportunities = getSavingsOpportunities();
 
@@ -144,10 +145,14 @@ export default function HomeScreen() {
             </Text>
             <Text style={styles.statLabel}>Due Soon</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{formatCurrency(totalMonthly * 12)}</Text>
-            <Text style={styles.statLabel}>Yearly</Text>
-          </View>
+          <TouchableOpacity
+            style={styles.statCard}
+            onPress={() => router.push('/subscriptions/list?viewMode=trials')}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.statNumber}>{activeTrials.length}</Text>
+            <Text style={styles.statLabel}>Free Trials</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Upcoming Bills */}

@@ -36,6 +36,7 @@ interface SubscriptionStore {
   getBudgetInsights: () => SpendingAnalytics['budgetInsights'];
   checkForPriceIncreases: () => void;
   checkForTrialEnding: () => void;
+  getActiveFreeTrials: () => Subscription[];
 
   // Error handling
   clearError: () => void;
@@ -409,6 +410,11 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             }
           }
         });
+      },
+
+      getActiveFreeTrials: () => {
+        const subscriptions = get().subscriptions;
+        return subscriptions.filter(sub => sub.isFreeTrial);
       },
     }),
     {
