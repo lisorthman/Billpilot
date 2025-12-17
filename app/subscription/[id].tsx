@@ -17,7 +17,7 @@ import {
 } from 'lucide-react-native';
 
 export default function SubscriptionDetailsScreen() {
-    const { id } = useLocalSearchParams<{ id: string }>();
+    const { id, viewMode } = useLocalSearchParams<{ id: string; viewMode?: string }>();
     const router = useRouter();
     const {
         subscriptions,
@@ -89,6 +89,14 @@ export default function SubscriptionDetailsScreen() {
         router.push(`/subscription/edit/${subscription.id}`);
     };
 
+    // Default to 'management' if not specified, or handle specifically?
+    // User requested specific behaviors. Let's assume:
+    // viewMode === 'payment' (Home) -> Show Paid, Hide Edit/Delete
+    // viewMode === 'management' (List) -> Show Edit/Delete, Hide Paid
+
+    const isPaymentMode = viewMode === 'payment';
+    const isManagementMode = viewMode === 'management';
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -98,9 +106,14 @@ export default function SubscriptionDetailsScreen() {
                         <ArrowLeft size={24} color="#1F2937" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>Details</Text>
-                    <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
-                        <Edit3 size={24} color="#3B82F6" />
-                    </TouchableOpacity>
+                    {/* Edit Button only in Management Mode */}
+                    {isManagementMode ? (
+                        <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
+                            <Edit3 size={24} color="#3B82F6" />
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={{ width: 40 }} />
+                    )}
                 </View>
 
                 {/* Main Card */}
@@ -165,20 +178,28 @@ export default function SubscriptionDetailsScreen() {
 
             {/* Footer Actions */}
             <View style={styles.footer}>
-                <Button
-                    title={subscription.isPaid ? "Paid" : "Mark as Paid"}
-                    onPress={handleMarkAsPaid}
-                    variant={subscription.isPaid ? "outline" : "primary"}
-                    disabled={subscription.isPaid}
-                    style={styles.actionButton}
-                />
-                <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={handleDelete}
-                    disabled={isDeleting}
-                >
-                    <Trash2 size={24} color="#EF4444" />
-                </TouchableOpacity>
+                {isPaymentMode && (
+                    <Button
+                        title={subscription.isPaid ? "Paid" : "Mark as Paid"}
+                        onPress={handleMarkAsPaid}
+                        variant={subscription.isPaid ? "outline" : "primary"}
+                        disabled={subscription.isPaid}
+                        style={styles.actionButton}
+                    />
+                )}
+
+                {isManagementMode && (
+                    <TouchableOpacity
+                        style={[styles.deleteButton, { width: '100%', borderRadius: 12 }]} // Expand if only button
+                        onPress={handleDelete}
+                        disabled={isDeleting}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                            <Trash2 size={24} color="#EF4444" />
+                            <Text style={{ marginLeft: 8, color: '#EF4444', fontWeight: '600', fontSize: 16 }}>Delete Subscription</Text>
+                        </View>
+                    </TouchableOpacity>
+                )}
             </View>
         </SafeAreaView>
     );

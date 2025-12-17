@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/authStore';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, getDaysUntilDue } from '@/utils/formatters';
 import { Plus, TrendingUp, CircleAlert as AlertCircle, LogOut, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AuthModal from '@/components/AuthModal';
@@ -137,12 +137,18 @@ export default function HomeScreen() {
 
         {/* Quick Stats */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
+          <TouchableOpacity
+            style={styles.statCard}
+            onPress={() => router.push('/subscriptions/list')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>{subscriptions.length}</Text>
             <Text style={styles.statLabel}>Active</Text>
-          </View>
+          </TouchableOpacity>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{upcomingBills.length}</Text>
+            <Text style={styles.statNumber}>
+              {upcomingBills.filter(sub => getDaysUntilDue(sub.nextDueDate) < 7).length}
+            </Text>
             <Text style={styles.statLabel}>Due Soon</Text>
           </View>
           <View style={styles.statCard}>
@@ -156,7 +162,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Upcoming Bills</Text>
             {upcomingBills.length > 0 && (
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/subscriptions/list?viewMode=payment')}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             )}
@@ -167,7 +173,7 @@ export default function HomeScreen() {
               <SubscriptionCard
                 key={subscription.id}
                 subscription={subscription}
-                onPress={() => router.push(`/subscription/${subscription.id}`)}
+                onPress={() => router.push(`/subscription/${subscription.id}?viewMode=payment`)}
               />
             ))
           ) : (
