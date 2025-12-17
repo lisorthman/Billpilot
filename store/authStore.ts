@@ -46,6 +46,7 @@ interface AuthStore {
   }) => Promise<void>;
   logout: () => Promise<void>;
   fetchProfile: (uid: string) => Promise<void>;
+  updateUserProfile: (updates: Partial<User>) => Promise<void>;
   clearError: () => void;
 }
 
@@ -153,6 +154,29 @@ export const useAuthStore = create<AuthStore>()(
         } catch (error: any) {
           set({
             error: error.message || 'Failed to fetch profile',
+            isLoading: false
+          });
+        }
+      },
+
+      updateUserProfile: async (updates: Partial<User>) => {
+        set({ isLoading: true, error: null });
+        try {
+          const currentUser = get().user;
+          if (!currentUser) throw new Error('No user logged in');
+
+          const userRef = doc(db, 'users', currentUser.id);
+          const updatedUser = { ...currentUser, ...updates, updatedAt: new Date() };
+
+          // Remove id for firestore update if present to avoid duplication/errors
+          const { id, ...firestoreData } = updatedUser;
+
+          await setDoc(userRef, firestoreData, { merge: true });
+
+          set({ user: updatedUser, isLoading: false });
+        } catch (error: any) {
+          set({
+            error: error.message || 'Failed to update profile',
             isLoading: false
           });
         }

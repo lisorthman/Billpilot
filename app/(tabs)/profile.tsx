@@ -1,18 +1,26 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { formatCurrency } from '@/utils/formatters';
-import { User, Settings, CreditCard, Download, CircleHelp as HelpCircle, LogOut, CreditCard as Edit3, Shield, Smartphone, Moon, ChevronRight } from 'lucide-react-native';
+import { User, Settings, CreditCard, Download, CircleHelp as HelpCircle, LogOut, Edit3, Shield, Smartphone, ChevronRight, Check } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
-  const { user, setUser, subscriptions } = useSubscriptionStore();
+  const router = useRouter();
+  const { subscriptions } = useSubscriptionStore();
+  const { user, updateUserProfile, logout } = useAuthStore();
+
   const [editingBudget, setEditingBudget] = useState(false);
   const [budgetValue, setBudgetValue] = useState(user?.monthlyBudget?.toString() || '500');
 
-  const handleBudgetSave = () => {
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(user?.name || '');
+
+  const handleBudgetSave = async () => {
     const newBudget = parseFloat(budgetValue);
     if (isNaN(newBudget) || newBudget <= 0) {
       Alert.alert('Error', 'Please enter a valid budget amount');
@@ -20,10 +28,41 @@ export default function ProfileScreen() {
     }
 
     if (user) {
-      setUser({ ...user, monthlyBudget: newBudget });
+      await updateUserProfile({ monthlyBudget: newBudget });
       setEditingBudget(false);
       Alert.alert('Success', 'Budget updated successfully!');
     }
+  };
+
+  const handleNameSave = async () => {
+    if (!nameValue.trim()) {
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+
+    if (user) {
+      await updateUserProfile({ name: nameValue.trim() });
+      setEditingName(false);
+      Alert.alert('Success', 'Profile updated successfully!');
+    }
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/');
+          }
+        },
+      ]
+    );
   };
 
   const stats = {
@@ -36,9 +75,6 @@ export default function ProfileScreen() {
         default: return sum;
       }
     }, 0),
-    averagePerSubscription: subscriptions.length > 0 
-      ? subscriptions.reduce((sum, sub) => sum + sub.amount, 0) / subscriptions.length 
-      : 0,
   };
 
   const menuItems = [
@@ -80,6 +116,16 @@ export default function ProfileScreen() {
     },
   ];
 
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#8B5CF6" />
+        </View>
+      </SafeAreaView>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -94,21 +140,54 @@ export default function ProfileScreen() {
           <View style={styles.avatar}>
             <User size={32} color="#3B82F6" />
           </View>
+
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.name || 'User Name'}</Text>
-            <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
+            {editingName ? (
+              <View style={styles.nameEditContainer}>
+                <Input
+                  value={nameValue}
+                  onChangeText={setNameValue}
+                  placeholder="Your Name"
+                  containerStyle={{ marginBottom: 0, flex: 1, marginRight: 8 }}
+                />
+                <TouchableOpacity onPress={handleNameSave} style={styles.saveIconBtn}>
+                  <Check size={20} color="#10B981" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.userName}>{user.name}</Text>
+                <Text style={styles.userEmail}>{user.email}</Text>
+              </View>
+            )}
           </View>
-          <TouchableOpacity style={styles.editButton}>
-            <Edit3 size={20} color="#3B82F6" />
+
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => {
+              if (editingName) {
+                setEditingName(false);
+                setNameValue(user.name);
+              } else {
+                setEditingName(true);
+                setNameValue(user.name);
+              }
+            }}
+          >
+            <Edit3 size={20} color={editingName ? "#6B7280" : "#3B82F6"} />
           </TouchableOpacity>
         </View>
 
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
+          <TouchableOpacity
+            style={styles.statCard}
+            onPress={() => router.push('/subscriptions/list')}
+            activeOpacity={0.7}
+          >
             <Text style={styles.statNumber}>{stats.totalSubscriptions}</Text>
-            <Text style={styles.statLabel}>Active Subscriptions</Text>
-          </View>
+            <Text style={styles.statLabel}>Active Subscriptions (View All)</Text>
+          </TouchableOpacity>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{formatCurrency(stats.totalMonthly)}</Text>
             <Text style={styles.statLabel}>Monthly Spending</Text>
@@ -119,15 +198,15 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Monthly Budget</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.editBudgetButton}
               onPress={() => setEditingBudget(!editingBudget)}
             >
               <Edit3 size={16} color="#3B82F6" />
-              <Text style={styles.editBudgetText}>Edit</Text>
+              <Text style={styles.editBudgetText}>{editingBudget ? 'Cancel' : 'Edit'}</Text>
             </TouchableOpacity>
           </View>
-          
+
           {editingBudget ? (
             <View style={styles.budgetEdit}>
               <Input
@@ -137,15 +216,6 @@ export default function ProfileScreen() {
                 placeholder="Enter budget amount"
               />
               <View style={styles.budgetActions}>
-                <Button
-                  title="Cancel"
-                  variant="outline"
-                  onPress={() => {
-                    setBudgetValue(user?.monthlyBudget?.toString() || '500');
-                    setEditingBudget(false);
-                  }}
-                  style={styles.budgetButton}
-                />
                 <Button
                   title="Save"
                   onPress={handleBudgetSave}
@@ -190,16 +260,9 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.logoutButton}
-          onPress={() => Alert.alert(
-            'Logout',
-            'Are you sure you want to logout?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Logout', style: 'destructive' },
-            ]
-          )}
+          onPress={handleLogout}
         >
           <LogOut size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Logout</Text>
@@ -218,6 +281,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: 20,
@@ -260,6 +328,14 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  nameEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  saveIconBtn: {
+    padding: 8,
   },
   userName: {
     fontSize: 20,
@@ -278,6 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 8,
   },
   statsContainer: {
     flexDirection: 'row',
@@ -304,9 +381,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
     textAlign: 'center',
+    marginTop: 4,
   },
   section: {
     marginBottom: 24,
@@ -343,13 +421,10 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   budgetActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
+    marginTop: 12,
   },
   budgetButton: {
-    flex: 1,
-    marginHorizontal: 6,
+    width: '100%',
   },
   budgetDisplay: {
     backgroundColor: '#FFFFFF',
