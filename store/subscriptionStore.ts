@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Subscription, SubscriptionCategory, RecurrenceType, User, SpendingAnalytics, Notification } from '@/types';
+import { Subscription, SubscriptionCategory, RecurrenceType, User, SpendingAnalytics, Notification, PaymentRecord } from '@/types';
 import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../services/firebaseConfig';
 
 interface SubscriptionStore {
   subscriptions: Subscription[];
+  history: PaymentRecord[];
   user: User | null;
   notifications: Notification[];
   isLoading: boolean;
@@ -27,6 +28,7 @@ interface SubscriptionStore {
   updateSubscriptionAPI: (id: string, updates: Partial<Subscription>) => Promise<void>;
   deleteSubscriptionAPI: (id: string) => Promise<void>;
   markAsPaidAPI: (id: string) => Promise<void>;
+  fetchHistory: (userId: string) => Promise<void>;
 
   // Utility methods
   getUpcomingBills: () => Subscription[];
@@ -57,12 +59,43 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
   persist(
     (set, get) => ({
       subscriptions: [],
+      history: [],
       user: null,
       notifications: [],
       isLoading: false,
       error: null,
 
       // Firebase Methods
+      fetchHistory: async (userId: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const historyRef = collection(db, 'payment_history');
+          const q = query(historyRef, where('userId', '==', userId));
+          const querySnapshot = await getDocs(q);
+
+          const history: PaymentRecord[] = [];
+          querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            history.push({
+              id: doc.id,
+              ...data,
+              date: data.date?.toDate?.() || new Date(data.date),
+            } as PaymentRecord);
+          });
+
+          // Sort by date descending
+          history.sort((a, b) => b.date.getTime() - a.date.getTime());
+
+          set({ history, isLoading: false });
+        } catch (error: any) {
+          set({
+            // error: error.message || 'Failed to fetch history', // Silently fail for now to avoid blocking
+            error: null,
+            isLoading: false
+          });
+        }
+      },
+
       fetchSubscriptions: async (userId: string) => {
         set({ isLoading: true, error: null });
         try {
@@ -181,10 +214,22 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             isPaid: false // Ensure it's active for the next cycle
           });
 
+          // Create payment record
+          const paymentRecord: Omit<PaymentRecord, 'id'> = {
+            subscriptionId: subscription.id,
+            subscriptionName: subscription.name,
+            amount: subscription.amount,
+            date: new Date(),
+            category: subscription.category,
+            userId: subscription.userId,
+          };
+          const historyRef = await addDoc(collection(db, 'payment_history'), paymentRecord);
+
           set((state) => ({
             subscriptions: state.subscriptions.map((sub) =>
               sub.id === id ? { ...sub, nextDueDate: newDueDate, isPaid: false } : sub
             ),
+            history: [{ id: historyRef.id, ...paymentRecord } as PaymentRecord, ...state.history],
             isLoading: false,
           }));
         } catch (error: any) {
@@ -241,10 +286,22 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             break;
         }
 
+        // Create local payment record
+        const paymentRecord: PaymentRecord = {
+          id: Date.now().toString(),
+          subscriptionId: subscription.id,
+          subscriptionName: subscription.name,
+          amount: subscription.amount,
+          date: new Date(),
+          category: subscription.category,
+          userId: subscription.userId || 'local',
+        };
+
         set((state) => ({
           subscriptions: state.subscriptions.map((sub) =>
             sub.id === id ? { ...sub, nextDueDate: newDueDate, isPaid: false } : sub
           ),
+          history: [paymentRecord, ...state.history],
         }));
       },
 
@@ -327,17 +384,19 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
         const now = new Date();
 
         return {
-          unusedSubscriptions: subscriptions.filter(sub =>
-            sub.createdAt < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) &&
-            sub.amount > 0
-          ),
+          unusedSubscriptions: subscriptions.filter(sub => {
+            const createdAt = new Date(sub.createdAt);
+            const unusedThreshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            return createdAt < unusedThreshold && sub.amount > 0;
+          }),
           priceIncreases: subscriptions.filter(sub =>
             sub.previousAmount && sub.amount > sub.previousAmount
           ),
-          trialEnding: subscriptions.filter(sub =>
-            sub.isFreeTrial && sub.trialEndDate &&
-            sub.trialEndDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000
-          ),
+          trialEnding: subscriptions.filter(sub => {
+            if (!sub.isFreeTrial || !sub.trialEndDate) return false;
+            const trialEnd = new Date(sub.trialEndDate);
+            return trialEnd.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000;
+          }),
         };
       },
 
@@ -396,8 +455,9 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
         const now = new Date();
         subscriptions.forEach(sub => {
           if (sub.isFreeTrial && sub.trialEndDate) {
+            const trialEndDate = new Date(sub.trialEndDate);
             const daysUntilTrialEnds = Math.ceil(
-              (sub.trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
+              (trialEndDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)
             );
             if (daysUntilTrialEnds <= 3 && daysUntilTrialEnds > 0) {
               get().addNotification({

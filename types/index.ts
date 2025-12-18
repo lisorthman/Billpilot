@@ -11,6 +11,7 @@ export interface Subscription {
   color: string;
   description?: string;
   notes?: string;
+  userId?: string;
   isFreeTrial?: boolean;
   trialEndDate?: Date;
   previousAmount?: number;
@@ -18,14 +19,14 @@ export interface Subscription {
   reminderDays?: number[];
 }
 
-export type SubscriptionCategory = 
-  | 'Entertainment' 
-  | 'Utilities' 
-  | 'Rent' 
-  | 'Education' 
-  | 'Health' 
-  | 'Transport' 
-  | 'Food' 
+export type SubscriptionCategory =
+  | 'Entertainment'
+  | 'Utilities'
+  | 'Rent'
+  | 'Education'
+  | 'Health'
+  | 'Transport'
+  | 'Food'
   | 'Other';
 
 export type RecurrenceType = 'Weekly' | 'Monthly' | 'Yearly';
@@ -73,4 +74,14 @@ export interface Notification {
   createdAt: Date;
   isRead: boolean;
   scheduledFor?: Date;
+}
+
+export interface PaymentRecord {
+  id: string;
+  subscriptionId: string;
+  subscriptionName: string;
+  amount: number;
+  date: Date;
+  category: SubscriptionCategory;
+  userId: string;
 }
