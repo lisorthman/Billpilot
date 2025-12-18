@@ -5,7 +5,7 @@ import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useAuthStore } from '@/store/authStore';
 import { SubscriptionCard } from '@/components/SubscriptionCard';
 import { formatCurrency, getDaysUntilDue } from '@/utils/formatters';
-import { Plus, TrendingUp, CircleAlert as AlertCircle, LogOut, User } from 'lucide-react-native';
+import { Plus, TrendingUp, CircleAlert as AlertCircle, Bell, User } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import AuthModal from '@/components/AuthModal';
 
@@ -35,11 +35,7 @@ export default function HomeScreen() {
   const budgetInsights = getBudgetInsights();
   const savingsOpportunities = getSavingsOpportunities();
 
-  const handleLogout = async () => {
-    await logout();
-    // Clear local subscription data
-    // You might want to add a clearSubscriptions method to your store
-  };
+
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
@@ -97,8 +93,8 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Hello, {authUser.name}</Text>
             <Text style={styles.subtitle}>Manage your subscriptions</Text>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-            <LogOut size={20} color="#6B7280" />
+          <TouchableOpacity style={styles.logoutButton} onPress={() => router.push('/(tabs)/history')}>
+            <Bell size={24} color="#6B7280" />
           </TouchableOpacity>
         </View>
 
