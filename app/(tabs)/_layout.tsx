@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Chrome as Home, ChartBar as BarChart3, Plus, Bell, User } from 'lucide-react-native';
+import { Chrome as Home, ChartBar as BarChart3, Plus, History, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -51,11 +51,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="notifications"
+        name="history"
         options={{
-          title: 'Notifications',
+          title: 'History',
           tabBarIcon: ({ size, color }) => (
-            <Bell size={size} color={color} />
+            <History size={size} color={color} />
           ),
         }}
       />
