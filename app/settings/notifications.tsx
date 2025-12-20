@@ -16,7 +16,7 @@ export default function NotificationSettingsScreen() {
         weeklyReports: true,
     });
 
-    const updateNotificationSetting = (key: string, value: boolean) => {
+    const updateNotificationSetting = (key: string, value: boolean | number) => {
         setNotificationSettings(prev => ({ ...prev, [key]: value }));
         // Here you would typically save to backend
     };
