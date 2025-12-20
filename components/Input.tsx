@@ -4,26 +4,31 @@ import { View, TextInput, Text, StyleSheet, TextInputProps } from 'react-native'
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
+  leftIcon?: React.ReactNode;
   containerStyle?: any;
 }
 
-export function Input({ label, error, containerStyle, ...props }: InputProps) {
+export function Input({ label, error, leftIcon, containerStyle, ...props }: InputProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
-      <TextInput
-        style={[
-          styles.input,
-          isFocused && styles.inputFocused,
-          error && styles.inputError,
-        ]}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
-        placeholderTextColor="#9CA3AF"
-        {...props}
-      />
+      <View style={styles.inputWrapper}>
+        {leftIcon && <View style={styles.iconContainer}>{leftIcon}</View>}
+        <TextInput
+          style={[
+            styles.input,
+            leftIcon && styles.inputWithIcon,
+            isFocused && styles.inputFocused,
+            error && styles.inputError,
+          ]}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholderTextColor="#9CA3AF"
+          {...props}
+        />
+      </View>
       {error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -39,7 +44,18 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 6,
   },
+  inputWrapper: {
+    position: 'relative',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    position: 'absolute',
+    left: 12,
+    zIndex: 1,
+  },
   input: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
@@ -47,6 +63,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     backgroundColor: '#FFFFFF',
+  },
+  inputWithIcon: {
+    paddingLeft: 44,
   },
   inputFocused: {
     borderColor: '#3B82F6',

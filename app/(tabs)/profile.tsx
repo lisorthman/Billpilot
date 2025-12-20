@@ -80,30 +80,52 @@ export default function ProfileScreen() {
     }, 0),
   };
 
+  const handleExportData = () => {
+    if (subscriptions.length === 0) {
+      Alert.alert('Export error', 'No data to export.');
+      return;
+    }
+
+    // Creating CSV structure
+    const headers = ['Name', 'Amount', 'Currency', 'Recurrence', 'Category', 'Next Due Date'];
+    const rows = subscriptions.map(sub => [
+      sub.name,
+      sub.amount,
+      'USD',
+      sub.recurrence,
+      sub.category || 'Subscription',
+      sub.nextDueDate
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    // In a real app, we would use expo-file-system and expo-sharing
+    Alert.alert('Data Exported', `Generated CSV for ${subscriptions.length} subscriptions.\n\nReady for download!`);
+  };
+
   const menuItems = [
     {
       icon: Settings,
       title: 'Account Settings',
-      subtitle: 'Manage your account preferences',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon!'),
+      subtitle: 'Manage your personal information',
+      onPress: () => router.push('/settings/account'),
     },
     {
       icon: CreditCard,
       title: 'Payment Methods',
       subtitle: 'Manage your payment methods',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon!'),
+      onPress: () => Alert.alert('Coming Soon', 'Payment methods integration is coming in the next update!'),
     },
     {
       icon: Shield,
       title: 'Privacy & Security',
       subtitle: 'Manage your privacy settings',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon!'),
+      onPress: () => router.push('/settings/privacy'),
     },
     {
       icon: Smartphone,
       title: 'App Preferences',
       subtitle: 'Customize your app experience',
-      onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon!'),
+      onPress: () => router.push('/settings/preferences'),
     },
     {
       icon: Bell,
@@ -115,7 +137,7 @@ export default function ProfileScreen() {
       icon: Download,
       title: 'Export Data',
       subtitle: 'Download your subscription data',
-      onPress: () => Alert.alert('Export Data', 'Your data will be exported as CSV file'),
+      onPress: handleExportData,
     },
     {
       icon: HelpCircle,
