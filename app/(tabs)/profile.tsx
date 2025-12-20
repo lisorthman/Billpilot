@@ -6,9 +6,9 @@ import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { formatCurrency } from '@/utils/formatters';
-import { User, Settings, CreditCard, Download, CircleHelp as HelpCircle, LogOut, Edit3, Shield, Smartphone, ChevronRight, Check, Bell, Clock, TriangleAlert as AlertTriangle, TrendingUp } from 'lucide-react-native';
+import { User, Settings, CreditCard, Download, CircleHelp as HelpCircle, LogOut, Edit3, Shield, Smartphone, ChevronRight, Check, Bell } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { Switch } from 'react-native';
+
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -21,20 +21,7 @@ export default function ProfileScreen() {
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(user?.name || '');
 
-  // Notification Settings State (migrated from notifications.tsx)
-  const [notificationSettings, setNotificationSettings] = useState({
-    pushEnabled: true,
-    emailEnabled: false,
-    priceAlerts: true,
-    budgetAlerts: true,
-    weeklyReports: true,
-  });
 
-  const updateNotificationSetting = (key: string, value: boolean) => {
-    setNotificationSettings(prev => ({ ...prev, [key]: value }));
-    // Here you would typically save to backend
-    // updateUserProfile({ notificationPreferences: { ... } })
-  };
 
   const handleBudgetSave = async () => {
     const newBudget = parseFloat(budgetValue);
@@ -117,6 +104,12 @@ export default function ProfileScreen() {
       title: 'App Preferences',
       subtitle: 'Customize your app experience',
       onPress: () => Alert.alert('Coming Soon', 'This feature will be available soon!'),
+    },
+    {
+      icon: Bell,
+      title: 'Notification Settings',
+      subtitle: 'Manage alerts and notifications',
+      onPress: () => router.push('/settings/notifications'),
     },
     {
       icon: Download,
@@ -275,65 +268,7 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        {/* Notification Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification Preferences</Text>
 
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <View style={styles.settingIcon}>
-                <Bell size={20} color="#3B82F6" />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>Push Notifications</Text>
-                <Text style={styles.settingDescription}>Receive alerts on this device</Text>
-              </View>
-              <Switch
-                value={notificationSettings.pushEnabled}
-                onValueChange={(val) => updateNotificationSetting('pushEnabled', val)}
-                trackColor={{ false: '#F3F4F6', true: '#3B82F6' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <View style={styles.settingIcon}>
-                <AlertTriangle size={20} color="#3B82F6" />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>Price Alerts</Text>
-                <Text style={styles.settingDescription}>Notify when prices change</Text>
-              </View>
-              <Switch
-                value={notificationSettings.priceAlerts}
-                onValueChange={(val) => updateNotificationSetting('priceAlerts', val)}
-                trackColor={{ false: '#F3F4F6', true: '#3B82F6' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingContent}>
-              <View style={styles.settingIcon}>
-                <TrendingUp size={20} color="#3B82F6" />
-              </View>
-              <View style={styles.settingText}>
-                <Text style={styles.settingTitle}>Budget Alerts</Text>
-                <Text style={styles.settingDescription}>Warn when near budget limit</Text>
-              </View>
-              <Switch
-                value={notificationSettings.budgetAlerts}
-                onValueChange={(val) => updateNotificationSetting('budgetAlerts', val)}
-                trackColor={{ false: '#F3F4F6', true: '#3B82F6' }}
-                thumbColor="#FFFFFF"
-              />
-            </View>
-          </View>
-
-        </View>
 
         {/* Logout Button */}
         <TouchableOpacity
